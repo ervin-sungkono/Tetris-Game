@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tetris</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>Tetris</h1>
+    <div class="game-container">
+        <canvas id="tetris" width="200" height="360"></canvas>
+        <div class="info">
+            <p>Score: <span id="score">0</span></p>
+            <p>Level: <span id="level">1</span></p>
+            <div class="hold-container">
+                <h4>Hold</h4>
+                <canvas id="hold" width="80" height="80"></canvas>
+            </div>
+            <div class="preview-container">
+                <h4>Next</h4>
+                <canvas id="preview" width="80" height="80"></canvas>
+            </div>
+            <button id="start-button">Start Game</button>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
