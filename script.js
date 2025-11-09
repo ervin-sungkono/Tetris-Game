@@ -8,6 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const previewContext = previewCanvas.getContext('2d');
     const holdCanvas = document.getElementById('hold');
     const holdContext = holdCanvas.getContext('2d');
+    const pauseOverlay = document.getElementById('pause-overlay');
+    const resumeButton = document.getElementById('resume-button');
 
     const ROWS = 18;
     const COLS = 10;
@@ -22,6 +24,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let level = 1;
     let rowsCleared = 0;
     let gameover = false;
+    let isPaused = false; // State variable for pause
+    let animationFrameId = null; // To store the requestAnimationFrame ID
 
     const colors = [
         null,
@@ -105,17 +109,35 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function getGhostPieceY() {
+        const originalY = player.pos.y;
+        player.pos.y++;
+        while (!collide(player, board)) {
+            player.pos.y++;
+        }
+        player.pos.y--; // Move back up one step to avoid collision
+        const ghostY = player.pos.y;
+        player.pos.y = originalY; // Reset player's Y position
+        return ghostY;
+    }
+
     function draw() {
         context.fillStyle = '#000';
         context.fillRect(0, 0, canvas.width, canvas.height);
 
         drawMatrix(board, { x: 0, y: 0 });
+
+        // Draw ghost piece
+        const ghostY = getGhostPieceY();
+        drawMatrix(player.matrix, { x: player.pos.x, y: ghostY }, context, 0.3); // Draw translucent ghost
+
         drawMatrix(player.matrix, player.pos);
         drawPreview();
         drawHold();
     }
 
-    function drawMatrix(matrix, offset, ctx = context) {
+    function drawMatrix(matrix, offset, ctx = context, alpha = 1) {
+        ctx.globalAlpha = alpha; // Set transparency for ghost piece
         matrix.forEach((row, y) => {
             row.forEach((value, x) => {
                 if (value !== 0) {
@@ -124,6 +146,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         });
+        ctx.globalAlpha = 1; // Reset transparency
     }
 
     function drawPreview() {
@@ -201,7 +224,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 matrix: player.matrix,
                 color: player.color,
             };
-
             prepareNextPlayerAndPreviewPieces(); // Prepare the next player and preview pieces
         }
 
@@ -224,6 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (collide(player, board)) {
             player.pos.x -= dir;
         }
+        draw();
     }
 
     function playerDrop() {
@@ -235,6 +258,7 @@ document.addEventListener('DOMContentLoaded', () => {
             sweep();
         }
         dropCounter = 0;
+        draw();
     }
 
     function playerRotate() {
@@ -250,6 +274,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
         }
+        draw();
     }
 
     function rotate(matrix) {
@@ -296,7 +321,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let lastTime = 0;
 
     function update(time = 0) {
-        if (gameover) {
+        if (gameover || isPaused) { // Stop game loop if paused
             return;
         }
         const deltaTime = time - lastTime;
@@ -305,12 +330,31 @@ document.addEventListener('DOMContentLoaded', () => {
         if (dropCounter > dropInterval) {
             playerDrop();
         }
-        draw();
-        requestAnimationFrame(update);
+        animationFrameId = requestAnimationFrame(update); // Store the animation frame ID
+    }
+
+    function pauseGame() {
+        isPaused = true;
+        pauseOverlay.style.display = 'flex'; // Show the overlay
+        cancelAnimationFrame(animationFrameId); // Stop the game loop
+    }
+
+    function resumeGame() {
+        isPaused = false;
+        pauseOverlay.style.display = 'none'; // Hide the overlay
+        update(); // Restart the game loop
     }
 
     document.addEventListener('keydown', event => {
         event.preventDefault();
+        if (event.key === 'p' || event.key === 'P') { // Pause/Resume with 'p' key
+            if (isPaused) {
+                resumeGame();
+            } else {
+                pauseGame();
+            }
+        }
+
         if (event.key === 'Shift') {
             handleHold();
         } else if (event.key === ' ') { // Space key for hard drop
@@ -332,6 +376,7 @@ document.addEventListener('DOMContentLoaded', () => {
         level = 1;
         rowsCleared = 0;
         gameover = false;
+        isPaused = false; // Ensure game is not paused at start
         dropInterval = 1000;
 
         fillBag(); // Fill the bag with 7 pieces
@@ -343,8 +388,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         updateScore();
         draw(); // Draw initial state
-        requestAnimationFrame(update); // Start the game loop
+        animationFrameId = requestAnimationFrame(update); // Start the game loop
     }
 
     startButton.addEventListener('click', startGame);
+    resumeButton.addEventListener('click', resumeGame);
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden && !gameover && !isPaused) {
+            pauseGame();
+        }
+    });
 });
