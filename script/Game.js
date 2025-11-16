@@ -2,16 +2,15 @@ import { Board, COLS, BLOCK_SIZE } from './Board.js';
 import { Piece } from './Piece.js';
 
 export class Game {
-    constructor(context, canvasWidth, canvasHeight, previewContext, previewCanvasWidth, previewCanvasHeight, holdContext, holdCanvasWidth, holdCanvasHeight, scoreElement, levelElement, startButton, resumeButton, pauseOverlay) {
-        this.board = new Board(context, canvasWidth, canvasHeight);
-        this.previewBoard = new Board(previewContext, previewCanvasWidth, previewCanvasHeight);
-        this.holdBoard = new Board(holdContext, holdCanvasWidth, holdCanvasHeight);
+    constructor(context, previewContext, holdContext) {
+        this.board = new Board(context);
+        this.previewBoard = new Board(previewContext);
+        this.holdBoard = new Board(holdContext);
 
-        this.scoreElement = scoreElement;
-        this.levelElement = levelElement;
-        this.startButton = startButton;
-        this.resumeButton = resumeButton;
-        this.pauseOverlay = pauseOverlay;
+        this.scoreElement = document.getElementById('score');;
+        this.levelElement = document.getElementById('level');
+        this.resumeButton = document.getElementById('resume-button');
+        this.pauseOverlay = document.getElementById('pause-overlay');
 
         this.score = 0;
         this.level = 1;
@@ -27,12 +26,12 @@ export class Game {
 
         this.dropCounter = 0;
         this.lastTime = 0;
+        this.lineClearAnimation = null;
 
         this.initEventListeners();
     }
 
     initEventListeners() {
-        this.startButton.addEventListener('click', () => this.startGame());
         this.resumeButton.addEventListener('click', () => this.resumeGame());
     }
 
@@ -82,6 +81,24 @@ export class Game {
             this.board.drawMatrix(this.piece.matrix, this.piece.pos);
         }
 
+        if (this.lineClearAnimation) {
+            const { frame, lines } = this.lineClearAnimation;
+            const scale = frame < 5 ? 1 + frame * 0.01 : 1.05;
+            const alpha = frame < 5 ? 1 : Math.max(0, 1 - (frame - 5) / 25);
+            this.board.context.save();
+            this.board.context.globalAlpha = alpha;
+            this.board.context.fillStyle = 'white';
+            for (const y of lines) {
+                for (let x = 0; x < this.board.board[y].length; ++x) {
+                    if (this.board.board[y][x] !== 0) {
+                        const offset = (scale - 1) / 2;
+                        this.board.context.fillRect(x - offset, y - offset, scale, scale);
+                    }
+                }
+            }
+            this.board.context.restore();
+        }
+
         this.drawPreview();
         this.drawHold();
     }
@@ -106,7 +123,7 @@ export class Game {
     
     handleHold() {
         if (this.heldPiece) {
-            [this.piece, this.heldPiece] = [this.heldPiece, this.piece];
+            [this.piece.matrix, this.heldPiece.matrix] = [this.heldPiece.matrix, this.piece.matrix];
         } else {
             this.heldPiece = this.piece;
             this.prepareNextPiece();
@@ -164,26 +181,18 @@ export class Game {
 
     sweep() {
         let cleared = 0;
+        const linesToClear = [];
         outer: for (let y = this.board.board.length - 1; y > 0; --y) {
             for (let x = 0; x < this.board.board[y].length; ++x) {
                 if (this.board.board[y][x] === 0) {
                     continue outer;
                 }
             }
-            const row = this.board.board.splice(y, 1)[0].fill(0);
-            this.board.board.unshift(row);
-            ++y;
+            linesToClear.push(y);
             cleared++;
         }
         if (cleared > 0) {
-            this.score += (cleared * 10) * this.level;
-            this.rowsCleared += cleared;
-            if (this.rowsCleared >= 10) {
-                this.level++;
-                this.rowsCleared = 0;
-                this.dropInterval = Math.floor(this.dropInterval * .845);
-            }
-            this.updateScore();
+            this.lineClearAnimation = { frame: 0, lines: linesToClear };
         }
     }
 
@@ -202,6 +211,27 @@ export class Game {
         if (this.dropCounter > this.dropInterval) {
             this.pieceDrop();
         }
+        if (this.lineClearAnimation) {
+            this.lineClearAnimation.frame++;
+            if (this.lineClearAnimation.frame > 30) {
+                // Clear the lines
+                for (const y of this.lineClearAnimation.lines.sort((a,b)=>b-a)) {
+                    const row = this.board.board.splice(y, 1)[0].fill(0);
+                    this.board.board.unshift(row);
+                }
+                const cleared = this.lineClearAnimation.lines.length;
+                this.score += (cleared * 10) * this.level;
+                this.rowsCleared += cleared;
+                if (this.rowsCleared >= 10) {
+                    this.level++;
+                    this.rowsCleared = 0;
+                    this.dropInterval = Math.floor(this.dropInterval * .845);
+                }
+                this.updateScore();
+                this.lineClearAnimation = null;
+            }
+            this.draw();
+        }
         this.animationFrameId = requestAnimationFrame(this.update.bind(this));
     }
 
@@ -217,7 +247,7 @@ export class Game {
         this.update();
     }
 
-    startGame() {
+    resetGame() {
         this.board.reset();
         this.score = 0;
         this.level = 1;
@@ -225,11 +255,20 @@ export class Game {
         this.gameover = false;
         this.isPaused = false;
         this.dropInterval = 800;
+        this.heldPiece = null;
+        this.nextPiece = null;
+        this.piece = null;
+
+        this.dropCounter = 0;
+        this.lastTime = 0;
+        this.lineClearAnimation = null;
+    }
+
+    startGame() {
+        this.resetGame();
 
         this.fillBag();
         this.prepareNextPiece();
-        this.heldPiece = null;
-
         this.updateScore();
         this.draw();
         this.update();

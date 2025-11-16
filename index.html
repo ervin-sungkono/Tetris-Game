@@ -5,23 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tetris</title>
     <link rel="stylesheet" href="style.css">
+    <script type="module" src="script/index.js" defer></script>
 </head>
 <body>
     <h1>Tetris</h1>
     <div class="game-container">
-        <canvas id="tetris" width="200" height="360"></canvas>
+        <canvas id="tetris"></canvas>
         <div class="info">
             <p>Score: <span id="score">0</span></p>
             <p>Level: <span id="level">1</span></p>
             <div class="hold-container">
                 <h4>Hold</h4>
-                <canvas id="hold" width="80" height="80"></canvas>
+                <canvas id="hold"></canvas>
             </div>
             <div class="preview-container">
                 <h4>Next</h4>
-                <canvas id="preview" width="80" height="80"></canvas>
+                <canvas id="preview"></canvas>
             </div>
-            <button id="start-button">Start Game</button>
         </div>
     </div>
 
@@ -31,6 +31,5 @@
             <button id="resume-button">Resume</button>
         </div>
     </div>
-    <script type="module" src="script/index.js"></script>
 </body>
 </html>

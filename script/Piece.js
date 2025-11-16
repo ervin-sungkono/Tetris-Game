@@ -32,18 +32,9 @@ const pieces = [
  */
 export class Piece {
     constructor(type, pos = {}) {
-        this.matrix = pieces[type];
+        this.matrix = structuredClone(pieces[type]);
         this.pos = { x: pos.x ?? 0, y: pos.y ?? 0 };
         this.color = colors[type + 1];
-    }
-
-    static fillBag() {
-        const pieceBag = [0, 1, 2, 3, 4, 5, 6];
-        for (let i = pieceBag.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [pieceBag[i], pieceBag[j]] = [pieceBag[j], pieceBag[i]];
-        }
-        return pieceBag;
     }
 
     rotate() {

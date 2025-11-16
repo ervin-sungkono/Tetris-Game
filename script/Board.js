@@ -5,10 +5,10 @@ export const COLS = 10;
 export const BLOCK_SIZE = 20;
 
 export class Board {
-    constructor(context, canvasWidth, canvasHeight) {
+    constructor(context) {
         this.context = context;
-        this.canvasWidth = canvasWidth;
-        this.canvasHeight = canvasHeight;
+        this.canvasWidth = context.canvas.width;
+        this.canvasHeight = context.canvas.height;
         this.board = this.createBoard();
     }
 
